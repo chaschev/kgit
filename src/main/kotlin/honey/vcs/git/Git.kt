@@ -3,6 +3,7 @@ package honey.vcs.git
 import mu.KLogging
 import org.eclipse.jgit.api.CreateBranchCommand
 import org.eclipse.jgit.api.PullResult
+import org.eclipse.jgit.api.Status
 import org.eclipse.jgit.dircache.DirCache
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.Ref
@@ -121,6 +122,30 @@ class Git(
         val r = git.add()
             .addFilepattern(filepath.substringAfter(repopath + "/"))
             .call()
+
+        return r
+    }
+
+    fun status(): Status {
+        return git.status().call()
+    }
+
+    fun logShortStatus(): String {
+        val status = status()
+
+        return "modified: ${status.modified.size}, added: ${status.added.size}, removed: ${status.removed.size}"
+    }
+
+    fun addAll(path: String): DirCache {
+        val r = git.add()
+            .addFilepattern(path)
+            .call()
+
+        logger.debug { "found ${r.entryCount} in git add" }
+
+        for(i in 0 until r.entryCount) {
+            println("A ${r.nextEntry(i)}")
+        }
 
         return r
     }

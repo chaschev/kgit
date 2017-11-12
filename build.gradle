@@ -20,12 +20,14 @@ buildscript {
   dependencies {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${versions.kotlin}"
     classpath "net.researchgate:gradle-release:2.4.0"
+    classpath "honey:kgit:0.0.1"
   }
 
   repositories {
     mavenCentral()
     maven { url 'http://dl.bintray.com/kotlin/kotlin-eap-1.2' }
     maven { url 'https://plugins.gradle.org/m2/' }
+    maven { url 'https://raw.github.com/chaschev/kgit/repository' }
   }
 }
 
@@ -39,6 +41,7 @@ apply plugin: 'project-report'
 //Shadow plugin & dependencies
 apply plugin: 'java'
 apply plugin: 'net.researchgate.release'
+apply plugin: 'maven-publish'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
@@ -57,7 +60,7 @@ dependencies {
 
   compile "org.eclipse.jgit:org.eclipse.jgit:4.9.0.201710071750-r"
 
-  compile 'io.github.microutils:kotlin-logging:1.4.6'
+  compile "io.github.microutils:kotlin-logging:1.4.6"
   compile "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.0"
 
   testCompile 'org.apache.logging.log4j:log4j-core:2.9.1'
@@ -67,9 +70,74 @@ dependencies {
   testCompile 'com.nhaarman:mockito-kotlin:1.5.0'
   testCompile deps.kotlin.test.jre
 
-  testCompile "io.kotlintest:kotlintest:2.0.7"
+  testCompile 'io.kotlintest:kotlintest:2.0.7'
 }
 
+group = 'honey'
+
+def releasesPath = "$buildDir/$name-release"
+def versionPath = "$releasesPath/$group/$name/$version"
+
+def releaseDir = new File(releasesPath)
+def versionDir = new File(versionPath)
+
+def repoUrl = "https://github.com/chaschev/kgit.git"
+
+task beforePublish() {
+ doLast{
+   def git = new honey.vcs.git.Git(releaseDir, repoUrl)
+
+   git.checkoutBranch("repository", false, true)
+
+   if(versionDir.exists()) {
+     throw new Exception("Release dir $versionDir already exists, delete it with something")
+   }
+   // todo create an empty branch
+   // todo or make sure it exists
+ }
+}
+
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
+
+  repositories {
+    maven {
+      // change to point to your repo, e.g. http://my.org/repo
+      url "$buildDir/kgit-release"
+    }
+  }
+}
+
+publish.dependsOn(beforePublish)
+
+publish.doLast{
+  // todo move into a separate task
+  def git = new honey.vcs.git.Git(releaseDir, repoUrl)
+  def addPath = versionPath.substring(releasesPath.length() + 1)
+
+  println("adding path $addPath ($versionPath) to commit...")
+
+  git.git.add()
+    .addFilepattern(addPath)
+    .call()
+
+  def status = git.git.status().call()
+
+  println(status)
+
+  println "status - modified: ${status.modified.size()} ${status.modified}, added: ${status.added.size()}, removed: ${status.removed.size()}"
+
+  git.commit("publish version $version")
+
+  println("pushing to git...")
+
+  git.push(true,true)
+}
 
 test {
   testLogging {
