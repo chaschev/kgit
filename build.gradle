@@ -93,6 +93,8 @@ task beforePublish() {
 
 publish.dependsOn(beforePublish)
 
+afterReleaseBuild.dependsOn(publish)
+
 publish.doLast{
   mavenPublishTask.publishToGit()
 }
