@@ -102,6 +102,8 @@ class Git(
 
         if(remoteBranch == null){
             if(createIfNotExists) {
+                val skipDeleteList = repoDir.list()
+
                 val spec = RefSpec("refs/heads/master:refs/heads/$branch")
                 git.push()
                     .setRefSpecs(spec)
@@ -110,7 +112,7 @@ class Git(
 
                 if(createEmpty) {
                     //todo make more smart
-                    emptyGitDir()
+                    emptyGitDir(skipDeleteList)
                     commit("create an empty branch $branch")
                 }
 
@@ -134,8 +136,9 @@ class Git(
 //        }
     }
 
-    private fun emptyGitDir() {
+    private fun emptyGitDir(skipDeleteList: Array<String>) {
         val repoPath = repoDir.toPath()
+
         Files.walkFileTree(repoPath, object : SimpleFileVisitor<Path>() {
             @Throws(IOException::class)
             override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
@@ -148,13 +151,20 @@ class Git(
 
                 if(dirName == ".git") return FileVisitResult.SKIP_SUBTREE
 
+                if(dir.parent == repoDir){
+                    if(skipDeleteList.contains(dir.toFile().name)) {
+                        println("skip $dir")
+                        return FileVisitResult.SKIP_SUBTREE
+                    }
+                }
+
                 return FileVisitResult.CONTINUE
             }
 
             @Throws(IOException::class)
             override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
                 if (dir != repoPath) {
-                    println("deleting $dir")
+//                    println("deleting $dir")
                     Files.delete(dir)
                 }
 

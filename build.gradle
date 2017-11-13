@@ -20,7 +20,7 @@ buildscript {
   dependencies {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${versions.kotlin}"
     classpath "net.researchgate:gradle-release:2.4.0"
-    classpath "honey:kgit:0.0.2"
+    classpath "honey:kgit:0.0.4"
   }
 
   repositories {
