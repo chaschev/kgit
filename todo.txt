@@ -1,0 +1,19 @@
+Simple Git release
+ Pre build
+  Check state (modified files)
+  Save files modified with unsnapshot (req Gradle API)
+  Unsnapshot (Groovy)
+ Publish New Version
+  Build with submodules (Groovy)
+  Call publish task if available: provide after+before maven publishing tasks OR call them directly (Groovy)
+  Commit clean version & create tags (Groovy -> Git)
+  Push (Groovy -> Git)
+ -> If fail, revert Git: delete commit (Git.revertLast), use saved version for rollback
+ Bump version. Auto mode by default or provide bump rule
+ Commit & Push
+
+Update the other Plugin
+ Switch to my Git API & Test it
+ Add Maven Publish to Git (provide a task to call after Publish)
+ (ok) Update Kohskuke's Plugin version
+ Bump Version spec (closure -> call predefined)

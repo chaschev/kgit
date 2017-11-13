@@ -1,7 +1,8 @@
 package honey.vcs.git
 
 import mu.KLogging
-import org.eclipse.jgit.api.CreateBranchCommand
+import org.eclipse.jgit.api.CreateBranchCommand.SetupUpstreamMode.*
+import org.eclipse.jgit.api.ListBranchCommand
 import org.eclipse.jgit.api.PullResult
 import org.eclipse.jgit.api.Status
 import org.eclipse.jgit.dircache.DirCache
@@ -19,6 +20,10 @@ import rocket.vcs.git.authProps
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.OutputStream
+import org.eclipse.jgit.transport.RefSpec
+import java.io.IOException
+import java.nio.file.*
+import java.nio.file.attribute.BasicFileAttributes
 
 
 class Git(
@@ -57,26 +62,105 @@ class Git(
         authProps["git.username"], authProps["git.password"]
     )
 
-    fun listBranches(): MutableList<Ref> = git.branchList().call()
+    fun listAllBranches(): MutableList<Ref> = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call()
+    fun listRemoteBranches(): MutableList<Ref> = git.branchList().setListMode(ListBranchCommand.ListMode.REMOTE).call()
+
+    fun listLocalBranches(): List<Ref> {
+        // or just
+//        return git.branchList().call()
+
+        val remoteList = listRemoteBranches()
+        val allList = listAllBranches()
+
+        return allList.filter { x ->
+            remoteList.firstOrNull { it.name == x.name } == null
+        }
+    }
+
+    //local branches are refs/heads/*
+    //remote branches ("remotes") are refs/remotes/origin/
+
+    fun getLocalBranch(branch: String): Ref? = listLocalBranches().firstOrNull { it.name == "refs/heads/$branch" }
+
+    fun getRemoteBranch(branch: String): Ref? = listRemoteBranches().firstOrNull { it.name == "refs/remotes/origin/$branch" }
+
 
     fun checkoutBranch(
         branch: String,
-        create: Boolean = false,
-        fetch: Boolean = true
+        create: Boolean? = null,
+        fetch: Boolean = false,
+        createIfNotExists:Boolean = true,
+        createEmpty: Boolean = true
     ) {
 
         if (fetch) {
             fetch()
         }
 
-        val co = git.checkout()
-            .setName(branch)
-            .setCreateBranch(create)
-            .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
-            .setStartPoint("origin/$branch")
-            .call()
+        val remoteBranch = getRemoteBranch(branch)
+        val localBranch = getLocalBranch(branch)
 
-        logger.info { "checked out branch $branch objectId=${co.objectId}" }
+        if(remoteBranch == null){
+            if(createIfNotExists) {
+                val spec = RefSpec("refs/heads/master:refs/heads/$branch")
+                git.push()
+                    .setRefSpecs(spec)
+                    .setCredentialsProvider(credentials)
+                    .call()
+
+                if(createEmpty) {
+                    //todo make more smart
+                    emptyGitDir()
+                    commit("create an empty branch $branch")
+                }
+
+                return
+            } else {
+                throw Exception("branch $branch does not exist, specify createIfExists=true to auto-create")
+            }
+        }
+
+        val createFlag = create ?: localBranch == null
+            //default
+            val co = git.checkout()
+                .setName(branch)
+                .setCreateBranch(createFlag)
+                .setUpstreamMode(TRACK)
+                .setForce(true)
+                .setStartPoint("origin/$branch")
+                .call()
+
+            logger.info { "checked out branch $branch objectId=${co.objectId}" }
+//        }
+    }
+
+    private fun emptyGitDir() {
+        val repoPath = repoDir.toPath()
+        Files.walkFileTree(repoPath, object : SimpleFileVisitor<Path>() {
+            @Throws(IOException::class)
+            override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                Files.delete(file)
+                return FileVisitResult.CONTINUE
+            }
+
+            override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes?): FileVisitResult {
+                val dirName = dir.toFile().name //fuck you Java
+
+                if(dirName == ".git") return FileVisitResult.SKIP_SUBTREE
+
+                return FileVisitResult.CONTINUE
+            }
+
+            @Throws(IOException::class)
+            override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
+                if (dir != repoPath) {
+                    println("deleting $dir")
+                    Files.delete(dir)
+                }
+
+                return FileVisitResult.CONTINUE
+            }
+        })
     }
 
     fun fetch() {
@@ -107,6 +191,13 @@ class Git(
     fun lsRemote(): MutableMap<String, Ref>? {
         return git.lsRemote()
             .setCredentialsProvider(credentials)
+            .callAsMap()
+    }
+
+    fun getBranches(): MutableMap<String, Ref>? {
+        return git.lsRemote()
+            .setCredentialsProvider(credentials)
+            .setTags(false)
             .callAsMap()
     }
 
@@ -143,9 +234,9 @@ class Git(
 
         logger.debug { "found ${r.entryCount} in git add" }
 
-        for(i in 0 until r.entryCount) {
-            println("A ${r.nextEntry(i)}")
-        }
+//        for(i in 0 until r.entryCount) {
+//            println("A ${r.nextEntry(i)}")
+//        }
 
         return r
     }
