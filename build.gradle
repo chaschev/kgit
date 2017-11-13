@@ -20,7 +20,7 @@ buildscript {
   dependencies {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${versions.kotlin}"
     classpath "net.researchgate:gradle-release:2.4.0"
-    classpath "honey:kgit:0.0.5"
+    classpath "honey:kgit:0.0.8"
   }
 
   repositories {
@@ -77,18 +77,24 @@ dependencies {
 
 group = 'honey'
 
-def releasesPath = "$buildDir/$name-release"
-def versionPath = "$releasesPath/$group/$name/$version"
-
-def releaseDir = new File(releasesPath)
-def versionDir = new File(versionPath)
-
 def repoUrl = "https://github.com/chaschev/kgit.git"
+
+def mavenPublishTask = new honey.vcs.git.MavenPublishTask(
+  repoUrl, new File("build"),
+  project.name, group, project.name, version
+)
+
 
 task beforePublish() {
  doLast{
-
+   mavenPublishTask.initRepo()
  }
+}
+
+publish.dependsOn(beforePublish)
+
+publish.doLast{
+  mavenPublishTask.publishToGit()
 }
 
 //def mavenPublishTask = new MavenPublishTask()
@@ -107,29 +113,6 @@ publishing {
   }
 }
 
-publish.dependsOn(beforePublish)
-
-/*publish.doLast{
-  // todo move into a separate task
-  def git = new honey.vcs.git.Git(releaseDir, repoUrl)
-  def addPath = versionPath.substring(releasesPath.length() + 1)
-
-  println("adding path $addPath ($versionPath) to commit...")
-
-  git.addAll(addPath)
-
-  def status = git.git.status().call()
-
-  println(status)
-
-  println "status - modified: ${status.modified.size()} ${status.modified}, added: ${status.added.size()}, removed: ${status.removed.size()}"
-
-  git.commit("publish version $version")
-
-  println("pushing to git...")
-
-  git.push(true,true)
-}*/
 
 test {
   testLogging {
