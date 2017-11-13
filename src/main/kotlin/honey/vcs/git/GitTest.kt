@@ -1,6 +1,5 @@
-package rocket.vcs.git
+package honey.vcs.git
 
-import honey.vcs.git.Git
 import java.io.File
 
 object GitTest {
