@@ -9,7 +9,7 @@ object GitTest2 {
             "https://chaschev@bitbucket.org/chaschev/rocket-cloud.git")
 
 //        git.fetch()
-        git.lsRemote()!!.forEach { (k,v) -> println(k) }
+        git.lsRemote()!!.forEach { (k, _) -> println(k) }
 
         println("\nall branches")
         git.listAllBranches().forEach { println(it.name) }
@@ -20,7 +20,7 @@ object GitTest2 {
         println("\nremote branches")
         git.listRemoteBranches().forEach { println(it.name) }
 
-        git.checkoutBranch("release8")
+        git.checkoutBranch("release9")
 
     }
 }

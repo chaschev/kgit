@@ -33,7 +33,7 @@ class Git(
     companion object : KLogging()
 
     protected val git: JGit by lazy {
-        if (!repoDir.exists()) {
+        if (!File(repoDir, ".git").exists()) {
             val git = JGit.cloneRepository()
                 .setURI(url)
                 .setDirectory(repoDir)

@@ -20,7 +20,7 @@ buildscript {
   dependencies {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${versions.kotlin}"
     classpath "net.researchgate:gradle-release:2.4.0"
-    classpath "honey:kgit:0.0.4"
+    classpath "honey:kgit:0.0.5"
   }
 
   repositories {
@@ -28,6 +28,7 @@ buildscript {
     maven { url 'http://dl.bintray.com/kotlin/kotlin-eap-1.2' }
     maven { url 'https://plugins.gradle.org/m2/' }
     maven { url 'https://raw.github.com/chaschev/kgit/repository' }
+    maven { url 'https://raw.github.com/chaschev/github-release-gradle-plugin/repository' }
   }
 }
 
@@ -86,18 +87,11 @@ def repoUrl = "https://github.com/chaschev/kgit.git"
 
 task beforePublish() {
  doLast{
-   def git = new honey.vcs.git.Git(releaseDir, repoUrl)
 
-   git.checkoutBranch("repository", false, true)
-
-//   if(versionDir.exists()) {
-//     throw new Exception("Release dir $versionDir already exists, delete it with something")
-//   }
-   // todo create an empty branch
-   // todo or make sure it exists
  }
 }
 
+//def mavenPublishTask = new MavenPublishTask()
 
 publishing {
   publications {
@@ -108,14 +102,14 @@ publishing {
 
   repositories {
     maven {
-      url "$buildDir/kgit-release"
+      url "$buildDir/kgit-repository"
     }
   }
 }
 
 publish.dependsOn(beforePublish)
 
-publish.doLast{
+/*publish.doLast{
   // todo move into a separate task
   def git = new honey.vcs.git.Git(releaseDir, repoUrl)
   def addPath = versionPath.substring(releasesPath.length() + 1)
@@ -135,7 +129,7 @@ publish.doLast{
   println("pushing to git...")
 
   git.push(true,true)
-}
+}*/
 
 test {
   testLogging {
